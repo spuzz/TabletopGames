@@ -12,13 +12,13 @@ import gui.GamePanel;
 import io.humble.video.*;
 import io.humble.video.awt.MediaPictureConverter;
 import io.humble.video.awt.MediaPictureConverterFactory;
+import players.PlayerConstants;
 import players.human.ActionController;
 import players.human.HumanConsolePlayer;
 import players.human.HumanGUIPlayer;
+import players.mcts.BasicMCTSPlayer;
 import players.mcts.MCTSParams;
 import players.simple.RandomPlayer;
-import players.mcts.MCTSPlayer;
-import players.simple.OSLAPlayer;
 import utilities.Pair;
 import utilities.TAGStatSummary;
 import utilities.Utils;
@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static core.CoreConstants.GameEvents;
-import static games.GameType.*;
 import static utilities.Utils.componentToImage;
 
 public class Game {
@@ -904,8 +903,8 @@ public class Game {
      * and then run this class.
      */
     public static void main(String[] args) {
-        String gameType = Utils.getArg(args, "game", "Pandemic");
-        boolean useGUI = Utils.getArg(args, "gui", true);
+        String gameType = Utils.getArg(args, "game", "SushiGo");
+        boolean useGUI = Utils.getArg(args, "core/gui", true);
         int playerCount = Utils.getArg(args, "nPlayers", 2);
         int turnPause = Utils.getArg(args, "turnPause", 0);
         long seed = Utils.getArg(args, "seed", System.currentTimeMillis());
@@ -915,14 +914,21 @@ public class Game {
         /* Set up players for the game */
         ArrayList<AbstractPlayer> players = new ArrayList<>(playerCount);
 
-        players.add(new RandomPlayer());
-        players.add(new RandomPlayer());
-//        players.add(new MCTSPlayer());
+//        players.add(new RandomPlayer());
+//        players.add(new RandomPlayer());
+        MCTSParams params = new MCTSParams();
+        params.K = Math.sqrt(2);
+        params.rolloutLength = 10;
+        params.maxTreeDepth = 6;
+        params.budgetType = PlayerConstants.BUDGET_FM_CALLS;
+        params.budget = 1000;
+        players.add(new HumanGUIPlayer(ac));
+        players.add(new BasicMCTSPlayer(params));
 //        MCTSParams params1 = new MCTSParams();
 //        players.add(new MCTSPlayer(params1));
 //        players.add(new OSLAPlayer());
 //        players.add(new RMHCPlayer());
-//        players.add(new HumanGUIPlayer(ac));
+
 //        players.add(new HumanConsolePlayer());
 //        players.add(new FirstActionPlayer());
 //        players.add(new HumanConsolePlayer());

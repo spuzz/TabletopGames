@@ -7,10 +7,18 @@ import core.ParameterFactory;
 import core.interfaces.IGameListener;
 import core.interfaces.IStatisticLogger;
 import games.GameType;
+import games.connect4.Connect4Heuristic;
+import games.dotsboxes.DotsAndBoxesHeuristic;
+import games.sushigo.SushiGoHeuristic;
+import games.tictactoe.TicTacToeHeuristic;
+import players.PlayerConstants;
 import players.PlayerFactory;
 import players.mcts.BasicMCTSPlayer;
+import players.mcts.MCTSParams;
 import players.mcts.MCTSPlayer;
+import players.mcts.SushiGoMCTSPlayer;
 import players.rmhc.RMHCPlayer;
+import players.simple.FirstActionPlayer;
 import players.simple.OSLAPlayer;
 import players.simple.RandomPlayer;
 import utilities.FileStatsLogger;
@@ -124,11 +132,19 @@ public class RoundRobinTournament extends AbstractTournament {
             }
         } else {
             /* 2. Set up players */
-            agents.add(new MCTSPlayer());
-            agents.add(new BasicMCTSPlayer());
-            agents.add(new RandomPlayer());
-            agents.add(new RMHCPlayer());
-            agents.add(new OSLAPlayer());
+            MCTSParams params = new MCTSParams();
+            params.maxTreeDepth = 10;
+            params.rolloutLength = 50;
+            params.budget = 10000;
+            agents.add(new BasicMCTSPlayer(params));
+            SushiGoMCTSPlayer sushiGoMCTSPlayer = new SushiGoMCTSPlayer(params);
+            sushiGoMCTSPlayer.setStateHeuristic(new SushiGoHeuristic());
+            agents.add(sushiGoMCTSPlayer);
+            //agents.add(new RandomPlayer());
+            //agents.add(new RMHCPlayer());
+            //agents.add(new OSLAPlayer());
+
+
         }
 
         AbstractParameters params = ParameterFactory.createFromFile(gameToPlay, gameParams);
@@ -172,7 +188,7 @@ public class RoundRobinTournament extends AbstractTournament {
 
             if (verbose)
                 for (int i = 0; i < this.agents.size(); i++) {
-                    System.out.printf("%s got %d points %n", agents.get(i), pointsPerPlayer[i]);
+                    System.out.printf("%s got %d points %n", agents.get(i).getPlayerID(), pointsPerPlayer[i]);
                     System.out.printf("%s won %.1f%% of the %d games of the tournament. %n",
                             agents.get(i), 100.0 * pointsPerPlayer[i] / gameCounter, gameCounter);
                     System.out.printf("%s won %.1f%% of the games it played during the tournament. %n",

@@ -31,3 +31,6 @@ target/classes/META-INF/ModernBoardGame.kotlin_module
 out/production/ModernBoardGame/META-INF/
 
 javadoc/
+myLog.txt
+RoundRobinReport.txt
+SushiGoLog.txt
