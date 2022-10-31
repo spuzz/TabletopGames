@@ -6,6 +6,7 @@ import core.interfaces.IGameListener;
 import core.interfaces.IPrintable;
 import core.turnorders.ReactiveTurnOrder;
 import games.GameType;
+import games.sushigo.SushiGoHeuristic;
 import gui.AbstractGUIManager;
 import gui.GUI;
 import gui.GamePanel;
@@ -18,6 +19,7 @@ import players.human.HumanConsolePlayer;
 import players.human.HumanGUIPlayer;
 import players.mcts.BasicMCTSPlayer;
 import players.mcts.MCTSParams;
+import players.mcts.SushiGoMCTSPlayer;
 import players.simple.RandomPlayer;
 import utilities.Pair;
 import utilities.TAGStatSummary;
@@ -906,7 +908,7 @@ public class Game {
         String gameType = Utils.getArg(args, "game", "SushiGo");
         boolean useGUI = Utils.getArg(args, "core/gui", true);
         int playerCount = Utils.getArg(args, "nPlayers", 2);
-        int turnPause = Utils.getArg(args, "turnPause", 0);
+        int turnPause = Utils.getArg(args, "turnPause", 5000);
         long seed = Utils.getArg(args, "seed", System.currentTimeMillis());
 
         ActionController ac = new ActionController(); //null;
@@ -918,14 +920,23 @@ public class Game {
 //        players.add(new RandomPlayer());
         MCTSParams params = new MCTSParams();
         params.K = Math.sqrt(2);
-        params.rolloutLength = 10;
-        params.maxTreeDepth = 6;
+        params.maxTreeDepth = 3;
+        params.rolloutLength = 5;
         params.budgetType = PlayerConstants.BUDGET_FM_CALLS;
-        params.budget = 1000;
-        players.add(new HumanGUIPlayer(ac));
-        players.add(new BasicMCTSPlayer(params));
+        params.budget = 10000;
+        //players.add(new HumanGUIPlayer(ac));
+        SushiGoMCTSPlayer sushiGoMCTSPlayer = new SushiGoMCTSPlayer(params);
+        sushiGoMCTSPlayer.setStateHeuristic(new SushiGoHeuristic());
+        players.add(sushiGoMCTSPlayer);
+
+        MCTSParams params2 = new MCTSParams();
+        params2.K = Math.sqrt(2);
+        params2.maxTreeDepth = 3;
+        params2.rolloutLength = 5;
+        params2.budgetType = PlayerConstants.BUDGET_TIME;
+        params2.budget = 1000;
 //        MCTSParams params1 = new MCTSParams();
-//        players.add(new MCTSPlayer(params1));
+        players.add(new BasicMCTSPlayer(params2));
 //        players.add(new OSLAPlayer());
 //        players.add(new RMHCPlayer());
 

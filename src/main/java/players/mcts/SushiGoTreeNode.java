@@ -93,6 +93,10 @@ class SushiGoTreeNode {
                 avgTimeTaken = acumTimeTaken / numIters;
                 remaining = elapsedTimer.remainingTimeMillis();
                 stop = remaining <= 2 * avgTimeTaken || remaining <= remainingLimit;
+                if(stop == true)
+                {
+                    System.out.println(numIters);
+                }
             } else if (budgetType == BUDGET_ITERATIONS) {
                 // Iteration budget
                 stop = numIters >= player.params.budget;
@@ -113,9 +117,10 @@ class SushiGoTreeNode {
     private SushiGoTreeNode treePolicy() {
 
         SushiGoTreeNode cur = this;
-
+        SushiGoTreeNode first = this;
         // Keep iterating while the state reached is not terminal and the depth of the tree is not exceeded
-        while (cur.state.isNotTerminal() && cur.depth < player.params.maxTreeDepth) {
+        while (cur.state.isNotTerminal() && cur.depth < player.params.maxTreeDepth
+                && cur.state.getTurnOrder().getRoundCounter() == first.state.getTurnOrder().getRoundCounter()){
             if (!cur.unexpandedActions().isEmpty()) {
                 // We have an unexpanded action
                 cur = cur.expand();
@@ -196,13 +201,16 @@ class SushiGoTreeNode {
             // default to standard UCB
             double explorationTerm = player.params.K * Math.sqrt(Math.log(this.nVisits + 1) / (child.nVisits + player.params.epsilon));
             // unless we are using a variant
-
+            SGGameState sgs = (SGGameState)state.copy();
+            advance(sgs, action);
+            double progressiveBias = player.params.getHeuristic().evaluateState(sgs,state.getCurrentPlayer())/ (1 + child.nVisits);
             // Find 'UCB' value
             // If 'we' are taking a turn we use classic UCB
             // If it is an opponent's turn, then we assume they are trying to minimise our score (with exploration)
             boolean iAmMoving = state.getCurrentPlayer() == player.getPlayerID();
             double uctValue = iAmMoving ? childValue : -childValue;
             uctValue += explorationTerm;
+            uctValue += iAmMoving ? progressiveBias : -progressiveBias;
 
             // Apply small noise to break ties randomly
             uctValue = noise(uctValue, player.params.epsilon, player.rnd.nextDouble());
@@ -229,13 +237,27 @@ class SushiGoTreeNode {
     private double rollOut() {
         int rolloutDepth = 0; // counting from end of tree
 
+        boolean chopsticks = false;
+
+        if(((SGGameState)state).getPlayerChopSticksActivated(player.getPlayerID()) == true && state.getCurrentPlayer() == 0)
+        {
+            //schopsticks = true;
+        }
         // If rollouts are enabled, select actions for the rollout in line with the rollout policy
         AbstractGameState rolloutState = state.copy();
-        if (player.params.rolloutLength > 0) {
-            while (!finishRollout(rolloutState, rolloutDepth)) {
+        int curRound = state.getTurnOrder().getRoundCounter();
+        if (player.params.rolloutLength > 0 ) {
+            while (!finishRollout(rolloutState, rolloutDepth, curRound)) {
+                curRound = rolloutState.getTurnOrder().getRoundCounter();
                 List<AbstractAction> availableActions = player.getForwardModel().computeAvailableActions(rolloutState);
                 List<Double> actionValues = evaluateActions(player, rolloutState, availableActions);
+                double minValue = Collections.min(actionValues) - 0.0000001;
+                for(int a=0; a<actionValues.size(); a++)
+                {
+                    actionValues.set(a, actionValues.get(a) - minValue);
+                }
                 double actionValueTotal = actionValues.stream().reduce(0.0, Double::sum);
+
                 Random randomNumber = new Random();
                 double pick = randomNumber.nextDouble() * actionValueTotal;
                 double current = 0;
@@ -247,14 +269,22 @@ class SushiGoTreeNode {
                         break;
                     }
                 }
-//                Double maxVal = Collections.max(actionValues);
-//                Integer maxIdx = actionValues.indexOf(maxVal);
                 AbstractAction next = availableActions.get(actionIndex);
                 //AbstractAction next = randomPlayer.getAction(rolloutState, availableActions);
+                if(chopsticks == true)
+                {
+                    System.out.println("------------------------------------------------------------------------");
+                    System.out.println(rolloutState.getCurrentPlayer());
+                    System.out.println(availableActions);
+                    System.out.println(actionValues);
+                    System.out.println(next);
+                }
                 advance(rolloutState, next);
+
                 rolloutDepth++;
             }
         }
+
         // Evaluate final state and return normalised score
         return player.params.getHeuristic().evaluateState(rolloutState, player.getPlayerID());
     }
@@ -277,8 +307,10 @@ class SushiGoTreeNode {
      * @param depth       - current depth
      * @return - true if rollout finished, false otherwise
      */
-    private boolean finishRollout(AbstractGameState rollerState, int depth) {
-        if (depth >= player.params.rolloutLength)
+    private boolean finishRollout(AbstractGameState rollerState, int depth, int curRound) {
+
+        if ((depth >= player.params.rolloutLength || rollerState.getTurnOrder().getRoundCounter() != curRound) &&
+                ( rollerState.getTurnOrder().getFirstPlayer() == rollerState.getCurrentPlayer()))
             return true;
 
         // End of game

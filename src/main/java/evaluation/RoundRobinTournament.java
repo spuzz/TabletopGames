@@ -133,11 +133,17 @@ public class RoundRobinTournament extends AbstractTournament {
         } else {
             /* 2. Set up players */
             MCTSParams params = new MCTSParams();
-            params.maxTreeDepth = 10;
-            params.rolloutLength = 50;
-            params.budget = 10000;
+            params.maxTreeDepth = 3;
+            params.rolloutLength = 5;
+            params.budget = 1000;
+            params.budgetType = PlayerConstants.BUDGET_TIME;
             agents.add(new BasicMCTSPlayer(params));
-            SushiGoMCTSPlayer sushiGoMCTSPlayer = new SushiGoMCTSPlayer(params);
+            MCTSParams sushiParams = new MCTSParams();
+            sushiParams.maxTreeDepth = 3;
+            sushiParams.rolloutLength = 5;
+            sushiParams.budgetType = PlayerConstants.BUDGET_TIME;
+            sushiParams.budget = 1000;
+            SushiGoMCTSPlayer sushiGoMCTSPlayer = new SushiGoMCTSPlayer(sushiParams);
             sushiGoMCTSPlayer.setStateHeuristic(new SushiGoHeuristic());
             agents.add(sushiGoMCTSPlayer);
             //agents.add(new RandomPlayer());

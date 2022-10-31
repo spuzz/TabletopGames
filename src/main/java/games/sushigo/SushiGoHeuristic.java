@@ -1,8 +1,11 @@
 package games.sushigo;
 import core.AbstractGameState;
+import core.actions.AbstractAction;
+import core.components.Card;
 import core.components.Deck;
 import core.interfaces.IStateHeuristic;
 import evaluation.TunableParameters;
+import games.sushigo.actions.PlayCardAction;
 import games.sushigo.cards.SGCard;
 import utilities.Utils;
 
@@ -11,7 +14,13 @@ import java.util.Optional;
 
 public class SushiGoHeuristic extends TunableParameters implements IStateHeuristic {
 
+    public SGCard lastCardPlayed = null;
     public SushiGoHeuristic() {
+    }
+
+    public void setLastCardPlayed(SGCard card)
+    {
+        lastCardPlayed = card;
     }
 
     @Override
@@ -24,39 +33,75 @@ public class SushiGoHeuristic extends TunableParameters implements IStateHeurist
         SGGameState sgs = (SGGameState)gs;
         Utils.GameResult playerResult = sgs.getPlayerResults()[playerId];
 
-        int oppScore = 0;
+        double bestOppScore = 0;
         for (int pID = 0; pID < sgs.getNPlayers(); pID++) {
             if(pID != playerId) {
-                oppScore += sgs.getPlayerScore()[pID] + sgs.getPlayerScoreToAdd(pID) + evaluateCardState(sgs,pID);
+                double oppScore = sgs.getPlayerScore()[pID] + sgs.getPlayerScoreToAdd(pID) + evaluateCardState(sgs,pID);
+                if(oppScore > bestOppScore)
+                {
+                    bestOppScore = oppScore;
+                }
             }
-
         }
         double playerScore = sgs.getPlayerScore()[playerId] + sgs.getPlayerScoreToAdd(playerId)  + evaluateCardState(sgs, playerId);
-        if (gs.isNotTerminal())
-            return (playerScore) / 50.0 + 0.05;
+        if (gs.isNotTerminal() && sgs.playerHands.get(playerId).getSize() != 0)
+            return sigmoid((playerScore - bestOppScore) / 4);
         return gs.getPlayerResults()[playerId].value;
     }
 
     public double evaluateCardState(SGGameState sgs, int playerId)
     {
         double value = 0;
-        int wasabi = sgs.getPlayerWasabiAvailable(playerId);
-        if(wasabi > 0)
+
+        int nextHandIndex = sgs.getCurrentPlayer();
+        if(nextHandIndex != sgs.getTurnOrder().getFirstPlayer())
         {
-            value += 0.2 * wasabi * sgs.playerHands.get(playerId).getComponents().size();;
+            nextHandIndex++;
+            if(nextHandIndex > sgs.getNPlayers() - 1)
+            {
+                nextHandIndex = 0;
+            }
+        }
+        Deck<SGCard> playerHand = sgs.playerHands.get(nextHandIndex);
+        Deck<SGCard> playerField = sgs.playerFields.get(playerId).copy();
+        Deck<SGCard> fieldMinusLastPlayed = playerField.copy();
+        if(lastCardPlayed != null && playerField.get(0) != lastCardPlayed)
+        {
+            playerField.add(lastCardPlayed);
         }
 
-        for(int c = 0; c < sgs.getPlayerChopSticksAmount(playerId); c++)
+        if(playerField.getSize() > 0)
         {
-            if(sgs.getPlayerChopSticksActivated(playerId) == false)
+            fieldMinusLastPlayed.remove(0);
+        }
+        if(sgs.getPlayerWasabiAvailable(playerId) > 0)
+        {
+            if(fieldMinusLastPlayed.stream().filter(o -> o.type == SGCard.SGCardType.Wasabi).count() != sgs.getPlayerChopSticksAmount(playerId))
             {
-                value += 0.2 * sgs.playerHands.get(playerId).getComponents().size();
+                value += 3.0;
+            }
+            else
+            {
+                value += 1.0;
             }
         }
 
+        if(sgs.getPlayerChopSticksAmount(playerId) > 0)
+        {
+            if(fieldMinusLastPlayed.stream().filter(o -> o.type == SGCard.SGCardType.Chopsticks).count() != sgs.getPlayerChopSticksAmount(playerId))
+            {
+                value += 4.0;
+            }
+            else
+            {
+                value += 2.0;
+            }
+        }
+
+
         if(sgs.getPlayerTempuraAmount(playerId) % 2 > 0)
         {
-            if(sgs.playerHands.get(playerId).getComponents().stream().filter(o -> o.type == SGCard.SGCardType.Tempura).findAny().isPresent())
+            if(playerHand.getComponents().stream().anyMatch(o -> o.type == SGCard.SGCardType.Tempura))
             {
                 value += 2.5;
             }
@@ -64,7 +109,7 @@ public class SushiGoHeuristic extends TunableParameters implements IStateHeurist
 
         if(sgs.getPlayerSashimiAmount(playerId) == 2)
         {
-            if(sgs.playerHands.get(playerId).getComponents().stream().filter(o -> o.type == SGCard.SGCardType.Sashimi).findAny().isPresent())
+            if(playerHand.getComponents().stream().anyMatch(o -> o.type == SGCard.SGCardType.Sashimi))
             {
                 value += 6.66;
             }
@@ -72,13 +117,13 @@ public class SushiGoHeuristic extends TunableParameters implements IStateHeurist
 
         if(sgs.getPlayerDumplingAmount(playerId) > 1)
         {
-            if(sgs.playerHands.get(playerId).getComponents().stream().filter(o -> o.type == SGCard.SGCardType.Dumpling).findAny().isPresent())
+            if(playerHand.getComponents().stream().anyMatch(o -> o.type == SGCard.SGCardType.Dumpling))
             {
-                value += sgs.getPlayerDumplingAmount(playerId) / 2;
+                value += sgs.getPlayerDumplingAmount(playerId) / 2.0;
             }
         }
 
-        float currentMakiPos = 2;
+        float currentMakiPos = sgs.getNPlayers();
         for(int id = 0; id < sgs.getNPlayers(); id++)
         {
             if(id != playerId)
@@ -90,9 +135,31 @@ public class SushiGoHeuristic extends TunableParameters implements IStateHeurist
             }
 
         }
-        value += currentMakiPos * 3.0 * ((float)(sgs.cardAmount - sgs.playerHands.get(playerId).getComponents().size()) / (float)sgs.cardAmount);
 
+//        value += currentMakiPos * 3.0 * ((float)(sgs.cardAmount - sgs.playerHands.get(playerId).getComponents().size()) / (float)sgs.cardAmount);
+//
+//        float currentPuddingPos = sgs.getNPlayers();
+//        for(int id = 0; id < sgs.getNPlayers(); id++)
+//        {
+//            if(id != playerId)
+//            {
+//                if(sgs.getPlayerField())
+//                {
+//                    currentMakiPos--;
+//                }
+//            }
+//
+//        }
+//        if(sgs.playerChopsticksActivated[playerId] == true)
+//        {
+//            value += 10;
+//        }
         return value;
+    }
+
+    private double sigmoid(double x)
+    {
+        return 1 / (1 + Math.exp(-x));
     }
 
     private int getMakiCount(SGGameState sgs, int playerId)
