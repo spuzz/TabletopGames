@@ -52,18 +52,20 @@ public class SushiGoHeuristic extends TunableParameters implements IStateHeurist
     public double evaluateCardState(SGGameState sgs, int playerId)
     {
         double value = 0;
-
+        Deck<SGCard> playerField = sgs.playerFields.get(playerId).copy();
         int nextHandIndex = sgs.getCurrentPlayer();
-        if(nextHandIndex != sgs.getTurnOrder().getFirstPlayer())
+        if(nextHandIndex != sgs.getTurnOrder().getFirstPlayer() && sgs.getCurrentPlayer() != playerId && sgs.playerCardPicks[playerId] != -1)
         {
+            playerField.add(sgs.playerHands.get(playerId).getComponents().get(sgs.playerCardPicks[playerId]));
             nextHandIndex++;
             if(nextHandIndex > sgs.getNPlayers() - 1)
             {
                 nextHandIndex = 0;
             }
+            //lastCardPlayed = sgs.getHistory().
         }
         Deck<SGCard> playerHand = sgs.playerHands.get(nextHandIndex);
-        Deck<SGCard> playerField = sgs.playerFields.get(playerId).copy();
+
         Deck<SGCard> fieldMinusLastPlayed = playerField.copy();
         if(lastCardPlayed != null && playerField.get(0) != lastCardPlayed)
         {
@@ -94,7 +96,7 @@ public class SushiGoHeuristic extends TunableParameters implements IStateHeurist
             }
             else
             {
-                value += 2.0;
+                value += 1.0;
             }
         }
 

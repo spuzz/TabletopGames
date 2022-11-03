@@ -21,14 +21,14 @@ import static players.mcts.MCTSEnums.TreePolicy.UCB;
 public class SushiGoMCTSPlayer extends AbstractPlayer {
 
     Random rnd;
-    MCTSParams params;
+    SushiGoMCTSParams params;
 
     public SushiGoMCTSPlayer() {
         this(System.currentTimeMillis());
     }
 
     public SushiGoMCTSPlayer(long seed) {
-        this.params = new MCTSParams(seed);
+        this.params = new SushiGoMCTSParams(seed);
         rnd = new Random(seed);
         setName("Sushi Go MCTS");
 
@@ -47,7 +47,7 @@ public class SushiGoMCTSPlayer extends AbstractPlayer {
         this.params.treePolicy = UCB;
     }
 
-    public SushiGoMCTSPlayer(MCTSParams params) {
+    public SushiGoMCTSPlayer(SushiGoMCTSParams params) {
         this.params = params;
         rnd = new Random(params.getRandomSeed());
         setName("SushiGo MCTS");

@@ -12,7 +12,15 @@ import java.util.*;
 import static java.util.stream.Collectors.toList;
 import static players.PlayerConstants.*;
 import static utilities.Utils.noise;
+class SortbyHeuristic implements Comparator<SushiGoTreeNode> {
 
+    // Method
+    // Sorting in ascending order of name
+    public int compare(SushiGoTreeNode a, SushiGoTreeNode b)
+    {
+        return Double.compare(a.heuristicValue , b.heuristicValue);
+    }
+}
 class SushiGoTreeNode {
     // Root node of tree
     SushiGoTreeNode root;
@@ -20,6 +28,10 @@ class SushiGoTreeNode {
     SushiGoTreeNode parent;
     // Children of this node
     Map<AbstractAction, SushiGoTreeNode> children = new HashMap<>();
+
+    LinkedHashMap<AbstractAction, SushiGoTreeNode> childrenPruned = new  LinkedHashMap<>();
+
+    private boolean isPruned = false;
     // Depth of this node
     final int depth;
 
@@ -34,6 +46,7 @@ class SushiGoTreeNode {
     private Random rnd;
     private RandomPlayer randomPlayer = new RandomPlayer();
 
+    public double heuristicValue = 0.0;
     // State in this node (closed loop)
     private AbstractGameState state;
 
@@ -93,7 +106,7 @@ class SushiGoTreeNode {
                 avgTimeTaken = acumTimeTaken / numIters;
                 remaining = elapsedTimer.remainingTimeMillis();
                 stop = remaining <= 2 * avgTimeTaken || remaining <= remainingLimit;
-                if(stop == true)
+                if(stop)
                 {
                     System.out.println(numIters);
                 }
@@ -189,6 +202,38 @@ class SushiGoTreeNode {
         AbstractAction bestAction = null;
         double bestValue = -Double.MAX_VALUE;
 
+        if(!isPruned && player.params.pup_T < nVisits) {
+            int kNodes = player.params.pup_k_init;
+            isPruned = true;
+            Collection<SushiGoTreeNode> nodes = children.values();
+            ArrayList<SushiGoTreeNode> list = new ArrayList<SushiGoTreeNode>(nodes);
+            list.sort(new SortbyHeuristic());
+            while (list.size() > kNodes) {
+                SushiGoTreeNode nodeToPrune = list.remove(0);
+                AbstractAction actionToRemove = children.keySet().stream().filter(o -> children.get(o) == nodeToPrune).findFirst().get();
+                childrenPruned.put(actionToRemove, children.get(actionToRemove));
+                children.remove(actionToRemove);
+            }
+        }
+
+        if(isPruned && childrenPruned.size() > 0)
+        {
+            double progressiveUnprune = player.params.pup_A * player.params.pup_B;
+            int kNodes = player.params.pup_k_init;
+            int curPower = 2;
+            while (progressiveUnprune < nVisits) {
+                kNodes++;
+                progressiveUnprune = player.params.pup_A * (Math.pow(player.params.pup_B, curPower));
+                curPower++;
+            }
+            while(children.size() < kNodes)
+            {
+                children.put(childrenPruned.entrySet().iterator().next().getKey(),childrenPruned.entrySet().iterator().next().getValue() );
+                childrenPruned.remove(childrenPruned.entrySet().iterator().next().getKey());
+            }
+        }
+
+
         for (AbstractAction action : children.keySet()) {
             SushiGoTreeNode child = children.get(action);
             if (child == null)
@@ -203,7 +248,8 @@ class SushiGoTreeNode {
             // unless we are using a variant
             SGGameState sgs = (SGGameState)state.copy();
             advance(sgs, action);
-            double progressiveBias = player.params.getHeuristic().evaluateState(sgs,state.getCurrentPlayer())/ (1 + child.nVisits);
+            child.heuristicValue =  player.params.getHeuristic().evaluateState(sgs,player.getPlayerID());
+            double progressiveBias =heuristicValue/ (1 + child.nVisits);
             // Find 'UCB' value
             // If 'we' are taking a turn we use classic UCB
             // If it is an opponent's turn, then we assume they are trying to minimise our score (with exploration)
@@ -239,7 +285,7 @@ class SushiGoTreeNode {
 
         boolean chopsticks = false;
 
-        if(((SGGameState)state).getPlayerChopSticksActivated(player.getPlayerID()) == true && state.getCurrentPlayer() == 0)
+        if(((SGGameState) state).getPlayerChopSticksActivated(player.getPlayerID()) && state.getCurrentPlayer() == 0)
         {
             //schopsticks = true;
         }
@@ -252,10 +298,7 @@ class SushiGoTreeNode {
                 List<AbstractAction> availableActions = player.getForwardModel().computeAvailableActions(rolloutState);
                 List<Double> actionValues = evaluateActions(player, rolloutState, availableActions);
                 double minValue = Collections.min(actionValues) - 0.0000001;
-                for(int a=0; a<actionValues.size(); a++)
-                {
-                    actionValues.set(a, actionValues.get(a) - minValue);
-                }
+                actionValues.replaceAll(aDouble -> aDouble - minValue);
                 double actionValueTotal = actionValues.stream().reduce(0.0, Double::sum);
 
                 Random randomNumber = new Random();
@@ -271,7 +314,7 @@ class SushiGoTreeNode {
                 }
                 AbstractAction next = availableActions.get(actionIndex);
                 //AbstractAction next = randomPlayer.getAction(rolloutState, availableActions);
-                if(chopsticks == true)
+                if(chopsticks)
                 {
                     System.out.println("------------------------------------------------------------------------");
                     System.out.println(rolloutState.getCurrentPlayer());

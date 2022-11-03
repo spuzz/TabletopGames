@@ -13,10 +13,7 @@ import games.sushigo.SushiGoHeuristic;
 import games.tictactoe.TicTacToeHeuristic;
 import players.PlayerConstants;
 import players.PlayerFactory;
-import players.mcts.BasicMCTSPlayer;
-import players.mcts.MCTSParams;
-import players.mcts.MCTSPlayer;
-import players.mcts.SushiGoMCTSPlayer;
+import players.mcts.*;
 import players.rmhc.RMHCPlayer;
 import players.simple.FirstActionPlayer;
 import players.simple.OSLAPlayer;
@@ -133,14 +130,14 @@ public class RoundRobinTournament extends AbstractTournament {
         } else {
             /* 2. Set up players */
             MCTSParams params = new MCTSParams();
-            params.maxTreeDepth = 3;
-            params.rolloutLength = 5;
+            params.maxTreeDepth = 5;
+            params.rolloutLength = 8;
             params.budget = 1000;
             params.budgetType = PlayerConstants.BUDGET_TIME;
             agents.add(new BasicMCTSPlayer(params));
-            MCTSParams sushiParams = new MCTSParams();
-            sushiParams.maxTreeDepth = 3;
-            sushiParams.rolloutLength = 5;
+            SushiGoMCTSParams sushiParams = new SushiGoMCTSParams();
+            sushiParams.maxTreeDepth = 5;
+            sushiParams.rolloutLength = 8;
             sushiParams.budgetType = PlayerConstants.BUDGET_TIME;
             sushiParams.budget = 1000;
             SushiGoMCTSPlayer sushiGoMCTSPlayer = new SushiGoMCTSPlayer(sushiParams);

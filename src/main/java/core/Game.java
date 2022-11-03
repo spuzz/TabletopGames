@@ -19,6 +19,7 @@ import players.human.HumanConsolePlayer;
 import players.human.HumanGUIPlayer;
 import players.mcts.BasicMCTSPlayer;
 import players.mcts.MCTSParams;
+import players.mcts.SushiGoMCTSParams;
 import players.mcts.SushiGoMCTSPlayer;
 import players.simple.RandomPlayer;
 import utilities.Pair;
@@ -918,24 +919,25 @@ public class Game {
 
 //        players.add(new RandomPlayer());
 //        players.add(new RandomPlayer());
-        MCTSParams params = new MCTSParams();
+        SushiGoMCTSParams params = new SushiGoMCTSParams();
         params.K = Math.sqrt(2);
-        params.maxTreeDepth = 3;
-        params.rolloutLength = 5;
+        params.maxTreeDepth = 5;
+        params.rolloutLength = 8;
         params.budgetType = PlayerConstants.BUDGET_FM_CALLS;
         params.budget = 10000;
         //players.add(new HumanGUIPlayer(ac));
         SushiGoMCTSPlayer sushiGoMCTSPlayer = new SushiGoMCTSPlayer(params);
         sushiGoMCTSPlayer.setStateHeuristic(new SushiGoHeuristic());
-        players.add(sushiGoMCTSPlayer);
+
 
         MCTSParams params2 = new MCTSParams();
         params2.K = Math.sqrt(2);
-        params2.maxTreeDepth = 3;
-        params2.rolloutLength = 5;
+        params2.maxTreeDepth = 5;
+        params2.rolloutLength = 8;
         params2.budgetType = PlayerConstants.BUDGET_TIME;
         params2.budget = 1000;
 //        MCTSParams params1 = new MCTSParams();
+        players.add(sushiGoMCTSPlayer);
         players.add(new BasicMCTSPlayer(params2));
 //        players.add(new OSLAPlayer());
 //        players.add(new RMHCPlayer());
