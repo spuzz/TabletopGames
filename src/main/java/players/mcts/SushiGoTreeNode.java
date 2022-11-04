@@ -35,6 +35,9 @@ class SushiGoTreeNode {
     // Depth of this node
     final int depth;
 
+    // Parameter for FPU
+    double phi = 1;
+
     // Total value of this node
     private double totValue;
     // Number of visits
@@ -90,7 +93,7 @@ class SushiGoTreeNode {
             ElapsedCpuTimer elapsedTimerIteration = new ElapsedCpuTimer();
 
             // Selection + expansion: navigate tree until a node not fully expanded is found, add a new node to the tree
-            SushiGoTreeNode selected = treePolicy();
+            SushiGoTreeNode selected = treePolicy(); // Replace here with FPUTreePolicy() to test it
             // Monte carlo rollout: return value of MC rollout from the newly added node
             double delta = selected.rollOut();
             // Back up the value of the rollout through the tree
@@ -148,6 +151,74 @@ class SushiGoTreeNode {
         return cur;
     }
 
+    /**
+     * Selection + expansion steps.
+     * - Tree is traversed until a node not fully expanded is found.
+     * - The urgency of each child of the node is computed (phi if it hasn't been visited before, UCB1-Tuned otherwise)
+     * - The child with highest urgency is added to the tree.
+     *
+     * @return - new node added to the tree.
+     */
+
+    private SushiGoTreeNode FPUTreePolicy() {
+        SushiGoTreeNode cur = this;
+        while (cur.state.isNotTerminal() && cur.depth < player.params.maxTreeDepth) {
+            // Node not fully extended
+            if (!cur.unexpandedActions().isEmpty()) {
+                // Iterate through actions and assign urgency to each action
+                Map<AbstractAction, Double> urgency = new HashMap<>(); // urgency
+                for (AbstractAction action : cur.children.keySet()) {
+                    if (cur.children.get(action) == null) { // child never visited, assigned FPU
+                        urgency.put(action, phi);
+                    } else { // child visited, assigned UCB-Tuned
+                        urgency.put(action, cur.children.get(action).ucb1t());
+                    }
+                }
+                // Find most urgent action
+                double u_value = -Double.MAX_VALUE; // most urgent value
+                AbstractAction u_action = cur.children.keySet().iterator().next(); // most urgent action, initialized with first action
+                for (AbstractAction action : urgency.keySet()) {
+                    if (urgency.get(action) > u_value) {
+                        u_value = urgency.get(action);
+                        u_action = action;
+                    }
+                }
+
+                if (u_value == phi) { // one of the unexpanded actions has the higher urgency value
+                    cur = cur.expand();
+                    return cur;
+                } else { // one of the expanded actions has the highest urgency value
+                    cur = cur.children.get(u_action); // u_action from this not from cur (cur assigned == null)
+                    return cur;
+                }
+                // Node fully expanded
+            } else {
+                AbstractAction actionChosen = cur.ucb();
+                cur = cur.children.get(actionChosen);
+            }
+        }
+        return cur;
+    }
+
+    /**
+     * @return - UCB1-Tuned value of the node
+     */
+    private double ucb1t(){
+
+        double totReward = this.totValue;
+        double nsa = this.nVisits + player.params.epsilon; // epsilon necessary?
+        double n = this.parent.nVisits +1; // +1 bc counter has not been incremented yet (?)
+        double qsa = totReward / (nsa); // average reward
+        double explorationTerm = player.params.K* Math.sqrt(Math.log(n) / (nsa)); // C = Math.sqrt(2)
+        double vsa = ((Math.pow(totReward,2)/nsa)-Math.pow((totReward/nsa),2))+Math.sqrt((2*Math.log(n))/nsa);
+
+        // If it is an opponent's turn, then we assume they are trying to minimise our score (with exploration)
+        boolean iAmMoving = state.getCurrentPlayer() == player.getPlayerID();
+        double value = iAmMoving ? qsa : -qsa; // opponent modeling here
+        value += explorationTerm*Math.min(1/4,vsa);
+
+        return value;
+    }
 
     private void setState(AbstractGameState newState) {
         state = newState;

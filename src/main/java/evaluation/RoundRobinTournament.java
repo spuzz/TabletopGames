@@ -72,7 +72,7 @@ public class RoundRobinTournament extends AbstractTournament {
         if (argsList.contains("--help") || argsList.contains("-h")) {
             System.out.println(
                     "There are a number of possible arguments:\n" +
-                            "\tgame=          The name of the game to play. Defaults to Uno.\n" +
+                            "\tgame=          The name of the game to play. Defaults to SushiGo.\n" +
                             "\tnPlayers=      The number of players in each game. Defaults to 2.\n" +
                             "\tplayers=       The directory containing agent JSON files for the competing Players\n" +
                             "\t               If not specified, this defaults to very basic OSLA, RND, RHEA and MCTS players.\n" +
@@ -102,7 +102,7 @@ public class RoundRobinTournament extends AbstractTournament {
             return;
         }
         /* 1. Settings for the tournament */
-        GameType gameToPlay = GameType.valueOf(getArg(args, "game", "Uno"));
+        GameType gameToPlay = GameType.valueOf(getArg(args, "game", "SushiGo"));
         int nPlayersPerGame = getArg(args, "nPlayers", 2);
         boolean selfPlay = getArg(args, "selfPlay", false);
         String mode = getArg(args, "mode", "exhaustive");
