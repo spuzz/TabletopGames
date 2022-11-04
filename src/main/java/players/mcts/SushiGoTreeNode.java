@@ -202,36 +202,40 @@ class SushiGoTreeNode {
         AbstractAction bestAction = null;
         double bestValue = -Double.MAX_VALUE;
 
-        if(!isPruned && player.params.pup_T < nVisits) {
-            int kNodes = player.params.pup_k_init;
-            isPruned = true;
-            Collection<SushiGoTreeNode> nodes = children.values();
-            ArrayList<SushiGoTreeNode> list = new ArrayList<SushiGoTreeNode>(nodes);
-            list.sort(new SortbyHeuristic());
-            while (list.size() > kNodes) {
-                SushiGoTreeNode nodeToPrune = list.remove(0);
-                AbstractAction actionToRemove = children.keySet().stream().filter(o -> children.get(o) == nodeToPrune).findFirst().get();
-                childrenPruned.put(actionToRemove, children.get(actionToRemove));
-                children.remove(actionToRemove);
+        if(player.params.useProgressiveUnpruning)
+        {
+            if(!isPruned && player.params.pup_T < nVisits) {
+                int kNodes = player.params.pup_k_init;
+                isPruned = true;
+                Collection<SushiGoTreeNode> nodes = children.values();
+                ArrayList<SushiGoTreeNode> list = new ArrayList<SushiGoTreeNode>(nodes);
+                list.sort(new SortbyHeuristic());
+                while (list.size() > kNodes) {
+                    SushiGoTreeNode nodeToPrune = list.remove(0);
+                    AbstractAction actionToRemove = children.keySet().stream().filter(o -> children.get(o) == nodeToPrune).findFirst().get();
+                    childrenPruned.put(actionToRemove, children.get(actionToRemove));
+                    children.remove(actionToRemove);
+                }
+            }
+
+            if(isPruned && childrenPruned.size() > 0)
+            {
+                double progressiveUnprune = player.params.pup_A * player.params.pup_B;
+                int kNodes = player.params.pup_k_init;
+                int curPower = 2;
+                while (progressiveUnprune < nVisits) {
+                    kNodes++;
+                    progressiveUnprune = player.params.pup_A * (Math.pow(player.params.pup_B, curPower));
+                    curPower++;
+                }
+                while(children.size() < kNodes)
+                {
+                    children.put(childrenPruned.entrySet().iterator().next().getKey(),childrenPruned.entrySet().iterator().next().getValue() );
+                    childrenPruned.remove(childrenPruned.entrySet().iterator().next().getKey());
+                }
             }
         }
 
-        if(isPruned && childrenPruned.size() > 0)
-        {
-            double progressiveUnprune = player.params.pup_A * player.params.pup_B;
-            int kNodes = player.params.pup_k_init;
-            int curPower = 2;
-            while (progressiveUnprune < nVisits) {
-                kNodes++;
-                progressiveUnprune = player.params.pup_A * (Math.pow(player.params.pup_B, curPower));
-                curPower++;
-            }
-            while(children.size() < kNodes)
-            {
-                children.put(childrenPruned.entrySet().iterator().next().getKey(),childrenPruned.entrySet().iterator().next().getValue() );
-                childrenPruned.remove(childrenPruned.entrySet().iterator().next().getKey());
-            }
-        }
 
 
         for (AbstractAction action : children.keySet()) {
@@ -248,15 +252,22 @@ class SushiGoTreeNode {
             // unless we are using a variant
             SGGameState sgs = (SGGameState)state.copy();
             advance(sgs, action);
-            child.heuristicValue =  player.params.getHeuristic().evaluateState(sgs,player.getPlayerID());
-            double progressiveBias =heuristicValue/ (1 + child.nVisits);
+
+            ;
             // Find 'UCB' value
             // If 'we' are taking a turn we use classic UCB
             // If it is an opponent's turn, then we assume they are trying to minimise our score (with exploration)
             boolean iAmMoving = state.getCurrentPlayer() == player.getPlayerID();
             double uctValue = iAmMoving ? childValue : -childValue;
             uctValue += explorationTerm;
-            uctValue += iAmMoving ? progressiveBias : -progressiveBias;
+
+            if(player.params.useProgressiveBias)
+            {
+                child.heuristicValue =  player.params.getHeuristic().evaluateState(sgs,player.getPlayerID());
+                double progressiveBias = heuristicValue/ (1 + child.nVisits);
+                uctValue += iAmMoving ? progressiveBias : -progressiveBias;
+            }
+
 
             // Apply small noise to break ties randomly
             uctValue = noise(uctValue, player.params.epsilon, player.rnd.nextDouble());
@@ -285,10 +296,6 @@ class SushiGoTreeNode {
 
         boolean chopsticks = false;
 
-        if(((SGGameState) state).getPlayerChopSticksActivated(player.getPlayerID()) && state.getCurrentPlayer() == 0)
-        {
-            //schopsticks = true;
-        }
         // If rollouts are enabled, select actions for the rollout in line with the rollout policy
         AbstractGameState rolloutState = state.copy();
         int curRound = state.getTurnOrder().getRoundCounter();
@@ -296,32 +303,31 @@ class SushiGoTreeNode {
             while (!finishRollout(rolloutState, rolloutDepth, curRound)) {
                 curRound = rolloutState.getTurnOrder().getRoundCounter();
                 List<AbstractAction> availableActions = player.getForwardModel().computeAvailableActions(rolloutState);
-                List<Double> actionValues = evaluateActions(player, rolloutState, availableActions);
-                double minValue = Collections.min(actionValues) - 0.0000001;
-                actionValues.replaceAll(aDouble -> aDouble - minValue);
-                double actionValueTotal = actionValues.stream().reduce(0.0, Double::sum);
-
-                Random randomNumber = new Random();
-                double pick = randomNumber.nextDouble() * actionValueTotal;
-                double current = 0;
-                int actionIndex = 0;
-                for(int y=0; y < actionValues.size(); y++){
-                    current += actionValues.get(y);
-                    if(pick <= current){
-                        actionIndex = y;
-                        break;
-                    }
-                }
-                AbstractAction next = availableActions.get(actionIndex);
-                //AbstractAction next = randomPlayer.getAction(rolloutState, availableActions);
-                if(chopsticks)
+                AbstractAction next;
+                if(player.params.useRolloutBias)
                 {
-                    System.out.println("------------------------------------------------------------------------");
-                    System.out.println(rolloutState.getCurrentPlayer());
-                    System.out.println(availableActions);
-                    System.out.println(actionValues);
-                    System.out.println(next);
+                    List<Double> actionValues = evaluateActions(player, rolloutState, availableActions);
+                    double minValue = Collections.min(actionValues) - 0.0000001;
+                    actionValues.replaceAll(aDouble -> aDouble - minValue);
+                    double actionValueTotal = actionValues.stream().reduce(0.0, Double::sum);
+
+                    Random randomNumber = new Random();
+                    double pick = randomNumber.nextDouble() * actionValueTotal;
+                    double current = 0;
+                    int actionIndex = 0;
+                    for(int y=0; y < actionValues.size(); y++){
+                        current += actionValues.get(y);
+                        if(pick <= current){
+                            actionIndex = y;
+                            break;
+                        }
+                    }
+                    next = availableActions.get(actionIndex);
                 }
+                else {
+                    next = randomPlayer.getAction(rolloutState, availableActions);
+                }
+
                 advance(rolloutState, next);
 
                 rolloutDepth++;

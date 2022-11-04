@@ -130,24 +130,41 @@ public class RoundRobinTournament extends AbstractTournament {
         } else {
             /* 2. Set up players */
             MCTSParams params = new MCTSParams();
-            params.maxTreeDepth = 5;
-            params.rolloutLength = 8;
-            params.budget = 1000;
+            params.maxTreeDepth = 2;
+            params.rolloutLength = 3;
+            params.budget = 100;
             params.budgetType = PlayerConstants.BUDGET_TIME;
-            agents.add(new BasicMCTSPlayer(params));
+            //agents.add(new BasicMCTSPlayer(params));
+
             SushiGoMCTSParams sushiParams = new SushiGoMCTSParams();
-            sushiParams.maxTreeDepth = 5;
-            sushiParams.rolloutLength = 8;
+            sushiParams.useProgressiveBias = true;
+            sushiParams.useProgressiveUnpruning = true;
+            //sushiParams.useRolloutBias = true;
+            sushiParams.maxTreeDepth = 20;
+            sushiParams.rolloutLength = 3;
             sushiParams.budgetType = PlayerConstants.BUDGET_TIME;
-            sushiParams.budget = 1000;
+            sushiParams.budget = 100;
+            sushiParams.heuristic = new SushiGoHeuristic();
+
             SushiGoMCTSPlayer sushiGoMCTSPlayer = new SushiGoMCTSPlayer(sushiParams);
-            sushiGoMCTSPlayer.setStateHeuristic(new SushiGoHeuristic());
-            agents.add(sushiGoMCTSPlayer);
+
             //agents.add(new RandomPlayer());
             //agents.add(new RMHCPlayer());
             //agents.add(new OSLAPlayer());
 
+            SushiGoMCTSParams sushiParams2 = new SushiGoMCTSParams();
+            sushiParams2.useProgressiveBias = true;
+            sushiParams2.useProgressiveUnpruning = true;
+            //sushiParams2.useRolloutBias = true;
+            sushiParams2.maxTreeDepth = 10;
+            sushiParams2.rolloutLength = 3;
+            sushiParams2.budgetType = PlayerConstants.BUDGET_TIME;
+            sushiParams2.budget = 100;
+            sushiParams2.heuristic = new SushiGoHeuristic();
+            SushiGoMCTSPlayer sushiGoMCTSPlayer2 = new SushiGoMCTSPlayer(sushiParams2);
 
+            agents.add(sushiGoMCTSPlayer);
+            agents.add(sushiGoMCTSPlayer2);
         }
 
         AbstractParameters params = ParameterFactory.createFromFile(gameToPlay, gameParams);

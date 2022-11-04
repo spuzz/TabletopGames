@@ -24,6 +24,9 @@ import static players.mcts.MCTSEnums.TreePolicy.UCB;
 
 public class SushiGoMCTSParams extends PlayerParameters {
 
+    public boolean useProgressiveBias = false;
+    public boolean useProgressiveUnpruning = false;
+    public boolean useRolloutBias = false;
     public int pup_k_init = 3;
     public int pup_T = 30;
     public double pup_A = 40;
