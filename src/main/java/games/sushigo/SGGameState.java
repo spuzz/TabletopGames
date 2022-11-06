@@ -176,7 +176,7 @@ public class SGGameState extends AbstractGameState {
     @Override
     protected double _getHeuristicScore(int playerId) {
         if (isNotTerminal())
-            return playerScore[playerId] / 50.0;
+            return playerScore[playerId] + playerScoreToAdd[playerId] / 50.0;
         return getPlayerResults()[playerId].value;
     }
 

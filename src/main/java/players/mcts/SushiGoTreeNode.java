@@ -2,15 +2,19 @@ package players.mcts;
 
 import core.AbstractGameState;
 import core.actions.AbstractAction;
+import core.interfaces.IStatisticLogger;
+import core.turnorders.TurnOrder;
 import games.sushigo.SGGameState;
 import players.PlayerConstants;
 import players.simple.RandomPlayer;
 import utilities.ElapsedCpuTimer;
+import utilities.Utils;
 
 import java.util.*;
 
 import static java.util.stream.Collectors.toList;
 import static players.PlayerConstants.*;
+import static utilities.Utils.entropyOf;
 import static utilities.Utils.noise;
 class SortbyHeuristic implements Comparator<SushiGoTreeNode> {
 
@@ -71,10 +75,10 @@ class SushiGoTreeNode {
     /**
      * Performs full MCTS search, using the defined budget limits.
      */
-    void mctsSearch() {
+    void mctsSearch(IStatisticLogger statsLogger) {
 
         // Variables for tracking time budget
-        double avgTimeTaken;
+        double avgTimeTaken = 0;
         double acumTimeTaken = 0;
         long remaining;
         int remainingLimit = player.params.breakMS;
@@ -96,6 +100,10 @@ class SushiGoTreeNode {
             SushiGoTreeNode selected = treePolicy(); // Replace here with FPUTreePolicy() to test it
             // Monte carlo rollout: return value of MC rollout from the newly added node
             double delta = selected.rollOut();
+            if(selected.depth > player.maxDepth)
+            {
+                player.maxDepth = selected.depth;
+            }
             // Back up the value of the rollout through the tree
             selected.backUp(delta);
             // Finished iteration
@@ -109,10 +117,10 @@ class SushiGoTreeNode {
                 avgTimeTaken = acumTimeTaken / numIters;
                 remaining = elapsedTimer.remainingTimeMillis();
                 stop = remaining <= 2 * avgTimeTaken || remaining <= remainingLimit;
-                if(stop)
-                {
-                    System.out.println(numIters);
-                }
+//                if(stop)
+//                {
+//                    System.out.println("Average time per Iteration " + (int)(avgTimeTaken * 1000));
+//                }
             } else if (budgetType == BUDGET_ITERATIONS) {
                 // Iteration budget
                 stop = numIters >= player.params.budget;
@@ -121,8 +129,27 @@ class SushiGoTreeNode {
                 stop = fmCallsCount > player.params.budget;
             }
         }
+        if (statsLogger != null) {
+            logTreeStats(statsLogger, numIters, elapsedTimer.elapsedMillis(), avgTimeTaken);
+        }
     }
-
+    public void logTreeStats(IStatisticLogger statsLogger, int numIters, long timeTaken, double avgTimeTaken)
+    {
+        Map<String, Object> stats = new LinkedHashMap<>();
+        statsLogger.record(stats);
+        stats.put("round", state.getTurnOrder().getRoundCounter());
+        stats.put("turn", state.getTurnOrder().getTurnCounter());
+        stats.put("turnOwner", state.getTurnOrder().getTurnOwner());
+        stats.put("iterations", numIters);
+        stats.put("fmCalls", fmCallsCount);
+        stats.put("time", timeTaken);
+        stats.put("maxDepth", player.maxDepth);
+        stats.put("nActionsRoot", children.size());
+        AbstractAction bestAction = bestAction();
+        stats.put("bestAction", bestAction);
+        stats.put("averageTimePerIteration", avgTimeTaken);
+        statsLogger.record(stats);
+    }
     /**
      * Selection + expansion steps.
      * - Tree is traversed until a node not fully expanded is found.
@@ -335,7 +362,7 @@ class SushiGoTreeNode {
             if(player.params.useProgressiveBias)
             {
                 child.heuristicValue =  player.params.getHeuristic().evaluateState(sgs,player.getPlayerID());
-                double progressiveBias = heuristicValue/ (1 + child.nVisits);
+                double progressiveBias = child.heuristicValue/ (child.nVisits);
                 uctValue += iAmMoving ? progressiveBias : -progressiveBias;
             }
 

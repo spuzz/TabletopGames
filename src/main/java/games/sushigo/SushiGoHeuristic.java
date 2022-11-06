@@ -43,9 +43,11 @@ public class SushiGoHeuristic extends TunableParameters implements IStateHeurist
                 }
             }
         }
+
+
         double playerScore = sgs.getPlayerScore()[playerId] + sgs.getPlayerScoreToAdd(playerId)  + evaluateCardState(sgs, playerId);
         if (gs.isNotTerminal() && sgs.playerHands.get(playerId).getSize() != 0)
-            return sigmoid((playerScore - bestOppScore) / 4);
+            return sigmoid((playerScore - bestOppScore) / 10);
         return gs.getPlayerResults()[playerId].value;
     }
 
@@ -62,7 +64,6 @@ public class SushiGoHeuristic extends TunableParameters implements IStateHeurist
             {
                 nextHandIndex = 0;
             }
-            //lastCardPlayed = sgs.getHistory().
         }
         Deck<SGCard> playerHand = sgs.playerHands.get(nextHandIndex);
 

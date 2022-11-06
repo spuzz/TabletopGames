@@ -109,7 +109,7 @@ public class RoundRobinTournament extends AbstractTournament {
         int matchups = getArg(args, "matchups", 1);
         String playerDirectory = getArg(args, "players", "");
         String gameParams = getArg(args, "gameParams", "");
-        String statsLogPrefix = getArg(args, "statsLog", "");
+        String statsLogPrefix = getArg(args, "statsLog", "sushiGo");
 
         List<String> listenerClasses = new ArrayList<>(Arrays.asList(getArg(args, "listener", "utilities.GameResultListener").split("\\|")));
         List<String> listenerFiles = new ArrayList<>(Arrays.asList(getArg(args, "listenerFile", "RoundRobinReport.txt").split("\\|")));
@@ -130,41 +130,57 @@ public class RoundRobinTournament extends AbstractTournament {
         } else {
             /* 2. Set up players */
             MCTSParams params = new MCTSParams();
-            params.maxTreeDepth = 2;
-            params.rolloutLength = 3;
-            params.budget = 100;
+            params.maxTreeDepth = 10;
+            params.rolloutLength = 21;
+            params.budget = 1000;
             params.budgetType = PlayerConstants.BUDGET_TIME;
-            //agents.add(new BasicMCTSPlayer(params));
+            BasicMCTSPlayer basicMcts = new BasicMCTSPlayer(params);
+            IStatisticLogger logger = IStatisticLogger.createLogger("utilities.SummaryLogger", statsLogPrefix + "_" + basicMcts.toString() + ".txt");
+            logger.record("Name", basicMcts.toString());
+            basicMcts.setStatsLogger(logger);
 
             SushiGoMCTSParams sushiParams = new SushiGoMCTSParams();
             sushiParams.useProgressiveBias = true;
             sushiParams.useProgressiveUnpruning = true;
+            sushiParams.pup_k_init = 3;
+            sushiParams.pup_T = 20;
+            sushiParams.pup_B = 2.0;
+            sushiParams.pup_A = 50;
             //sushiParams.useRolloutBias = true;
             sushiParams.maxTreeDepth = 20;
-            sushiParams.rolloutLength = 3;
+            sushiParams.rolloutLength = 21;
             sushiParams.budgetType = PlayerConstants.BUDGET_TIME;
-            sushiParams.budget = 100;
+            sushiParams.budget = 1000;
             sushiParams.heuristic = new SushiGoHeuristic();
 
             SushiGoMCTSPlayer sushiGoMCTSPlayer = new SushiGoMCTSPlayer(sushiParams);
+            IStatisticLogger basicMCTSlogger = IStatisticLogger.createLogger("utilities.SummaryLogger", statsLogPrefix + "_" + sushiGoMCTSPlayer.toString() + ".txt");
+            basicMCTSlogger.record("Name", sushiGoMCTSPlayer.toString());
+            sushiGoMCTSPlayer.setStatsLogger(basicMCTSlogger);
 
             //agents.add(new RandomPlayer());
             //agents.add(new RMHCPlayer());
             //agents.add(new OSLAPlayer());
 
             SushiGoMCTSParams sushiParams2 = new SushiGoMCTSParams();
-            sushiParams2.useProgressiveBias = true;
-            sushiParams2.useProgressiveUnpruning = true;
+            //sushiParams2.useProgressiveBias = true;
+            //sushiParams2.useProgressiveUnpruning = true;
             //sushiParams2.useRolloutBias = true;
-            sushiParams2.maxTreeDepth = 10;
-            sushiParams2.rolloutLength = 3;
+            sushiParams2.maxTreeDepth = 20;
+            sushiParams2.rolloutLength = 21;
             sushiParams2.budgetType = PlayerConstants.BUDGET_TIME;
-            sushiParams2.budget = 100;
+            sushiParams2.budget = 1000;
             sushiParams2.heuristic = new SushiGoHeuristic();
+
             SushiGoMCTSPlayer sushiGoMCTSPlayer2 = new SushiGoMCTSPlayer(sushiParams2);
+            IStatisticLogger logger2 = IStatisticLogger.createLogger("utilities.SummaryLogger", statsLogPrefix + "_" + sushiGoMCTSPlayer2.toString() + ".txt");
+            logger2.record("Name", sushiGoMCTSPlayer2.toString() + "2");
+            sushiGoMCTSPlayer2.setStatsLogger(logger2);
+
 
             agents.add(sushiGoMCTSPlayer);
-            agents.add(sushiGoMCTSPlayer2);
+            //agents.add(sushiGoMCTSPlayer2);
+            agents.add(basicMcts);
         }
 
         AbstractParameters params = ParameterFactory.createFromFile(gameToPlay, gameParams);
@@ -186,7 +202,7 @@ public class RoundRobinTournament extends AbstractTournament {
             for (int i = 0; i < agents.size(); i++) {
                 AbstractPlayer agent = agents.get(i);
                 agent.getStatsLogger().record("WinRate", tournament.pointsPerPlayer[i] / (double) (tournament.matchUpsRun * tournament.gamesPerMatchUp));
-                System.out.println("Statistics for agent " + agent);
+                System.out.println("Statistics for agent " + i + " " + agent);
                 agent.getStatsLogger().processDataAndFinish();
             }
         }

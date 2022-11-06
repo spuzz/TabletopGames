@@ -5,7 +5,9 @@ import core.AbstractPlayer;
 import core.actions.AbstractAction;
 import core.interfaces.IStateHeuristic;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 import static players.mcts.MCTSEnums.OpponentTreePolicy.Paranoid;
@@ -23,6 +25,7 @@ public class SushiGoMCTSPlayer extends AbstractPlayer {
     Random rnd;
     SushiGoMCTSParams params;
 
+    public int maxDepth = 0;
     public SushiGoMCTSPlayer() {
         this(System.currentTimeMillis());
     }
@@ -53,13 +56,18 @@ public class SushiGoMCTSPlayer extends AbstractPlayer {
         setName("SushiGo MCTS");
     }
 
+
+
     @Override
     public AbstractAction getAction(AbstractGameState gameState, List<AbstractAction> allActions) {
+        maxDepth = 0;
         // Search for best action from the root
         SushiGoTreeNode root = new SushiGoTreeNode(this, null, gameState, rnd);
 
         // mctsSearch does all of the hard work
-        root.mctsSearch();
+        root.mctsSearch(statsLogger);
+
+        //System.out.println("Max Depth Reached " + statsLogger.);
 
         // Return best action
         return root.bestAction();
