@@ -1,20 +1,17 @@
-package players.mcts;
+package groupL;
 
 import core.AbstractGameState;
 import core.actions.AbstractAction;
 import core.interfaces.IStatisticLogger;
-import core.turnorders.TurnOrder;
 import games.sushigo.SGGameState;
 import players.PlayerConstants;
 import players.simple.RandomPlayer;
 import utilities.ElapsedCpuTimer;
-import utilities.Utils;
 
 import java.util.*;
 
 import static java.util.stream.Collectors.toList;
 import static players.PlayerConstants.*;
-import static utilities.Utils.entropyOf;
 import static utilities.Utils.noise;
 class SortbyHeuristic implements Comparator<SushiGoTreeNode> {
 

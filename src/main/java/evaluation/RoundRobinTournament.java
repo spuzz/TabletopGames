@@ -2,25 +2,17 @@ package evaluation;
 
 import core.AbstractParameters;
 import core.AbstractPlayer;
-import core.Game;
 import core.ParameterFactory;
 import core.interfaces.IGameListener;
 import core.interfaces.IStatisticLogger;
 import games.GameType;
-import games.connect4.Connect4Heuristic;
-import games.dotsboxes.DotsAndBoxesHeuristic;
-import games.sushigo.SushiGoHeuristic;
-import games.tictactoe.TicTacToeHeuristic;
+import groupL.SushiGoHeuristic;
+import groupL.*;
 import players.PlayerConstants;
 import players.PlayerFactory;
 import players.mcts.*;
-import players.rmhc.RMHCPlayer;
-import players.simple.FirstActionPlayer;
-import players.simple.OSLAPlayer;
-import players.simple.RandomPlayer;
 import utilities.FileStatsLogger;
 
-import java.io.File;
 import java.util.*;
 
 import static utilities.Utils.GameResult;

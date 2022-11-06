@@ -1,16 +1,10 @@
-package games.sushigo;
+package groupL;
 import core.AbstractGameState;
-import core.actions.AbstractAction;
-import core.components.Card;
 import core.components.Deck;
 import core.interfaces.IStateHeuristic;
 import evaluation.TunableParameters;
-import games.sushigo.actions.PlayCardAction;
+import games.sushigo.SGGameState;
 import games.sushigo.cards.SGCard;
-import utilities.Utils;
-
-import java.util.ArrayList;
-import java.util.Optional;
 
 public class SushiGoHeuristic extends TunableParameters implements IStateHeuristic {
 
@@ -50,7 +44,7 @@ public class SushiGoHeuristic extends TunableParameters implements IStateHeurist
         // Current score + score waiting after playing a card this turn + evaluation of the current state for combo cards
         double playerScore = sgs.getPlayerScore()[playerId] + sgs.getPlayerScoreToAdd(playerId)  + evaluateCardState(sgs, playerId);
 
-        if (gs.isNotTerminal() && sgs.playerHands.get(playerId).getSize() != 0)
+        if (gs.isNotTerminal() && sgs.getPlayerDeck(playerId).getSize() != 0)
             // sigmoid will give a reward of 0.5 for a draw and will increase/decrease faster for small differences in score
             // This will make sure that close scores are more important to MCTS
             return sigmoid((playerScore - bestOppScore) / 10);
@@ -64,7 +58,7 @@ public class SushiGoHeuristic extends TunableParameters implements IStateHeurist
     public double evaluateCardState(SGGameState sgs, int playerId)
     {
         double value = 0;
-        Deck<SGCard> playerField = sgs.playerFields.get(playerId).copy();
+        Deck<SGCard> playerField = sgs.getPlayerFields().get(playerId).copy();
         // We may be missing the last card played if we are still in the same simultaneous turn
         // Add the last card played if it is not the last card in the field
         if(lastCardPlayed != null && playerField.get(0) != lastCardPlayed)
@@ -74,16 +68,17 @@ public class SushiGoHeuristic extends TunableParameters implements IStateHeurist
         // Determine if it is not the players action and still the same simultaneous turn
         // If it is we need to assume we will get the hand from the next player
         int nextHandIndex = sgs.getCurrentPlayer();
-        if(nextHandIndex != sgs.getTurnOrder().getFirstPlayer() && sgs.getCurrentPlayer() != playerId && sgs.playerCardPicks[playerId] != -1)
+        if(nextHandIndex != sgs.getTurnOrder().getFirstPlayer() && sgs.getCurrentPlayer() != playerId && sgs.getPlayerCardPicks()[playerId] != -1)
         {
-            playerField.add(sgs.playerHands.get(playerId).getComponents().get(sgs.playerCardPicks[playerId]));
+            playerField.add(sgs.getPlayerDeck(playerId).getComponents().get(sgs.getPlayerCardPicks()[playerId]));
             nextHandIndex++;
             if(nextHandIndex > sgs.getNPlayers() - 1)
             {
                 nextHandIndex = 0;
             }
         }
-        Deck<SGCard> playerHand = sgs.playerHands.get(nextHandIndex);
+
+        Deck<SGCard> playerHand = sgs.getPlayerDeck(nextHandIndex);
         Deck<SGCard> fieldMinusLastPlayed = playerField.copy();
 
         if(playerField.getSize() > 0)

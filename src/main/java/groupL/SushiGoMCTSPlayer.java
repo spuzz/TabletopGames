@@ -1,13 +1,12 @@
-package players.mcts;
+package groupL;
 
 import core.AbstractGameState;
 import core.AbstractPlayer;
 import core.actions.AbstractAction;
 import core.interfaces.IStateHeuristic;
+import players.mcts.MCTSEnums;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 
 import static players.mcts.MCTSEnums.OpponentTreePolicy.Paranoid;
