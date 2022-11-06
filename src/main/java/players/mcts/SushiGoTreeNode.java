@@ -302,22 +302,30 @@ class SushiGoTreeNode {
 
         if(player.params.useProgressiveUnpruning)
         {
+            // If this node has not been pruned and it N(S) > T then prune
             if(!isPruned && player.params.pup_T < nVisits) {
                 int kNodes = player.params.pup_k_init;
                 isPruned = true;
+
+                // Sort the list by heuristic value to make it easier to prune the worst nodes
                 Collection<SushiGoTreeNode> nodes = children.values();
                 ArrayList<SushiGoTreeNode> list = new ArrayList<SushiGoTreeNode>(nodes);
                 list.sort(new SortbyHeuristic());
+
+                // Keep pruning until we reach k_init nodes left
                 while (list.size() > kNodes) {
                     SushiGoTreeNode nodeToPrune = list.remove(0);
                     AbstractAction actionToRemove = children.keySet().stream().filter(o -> children.get(o) == nodeToPrune).findFirst().get();
+                    // Add the pruned node to a list so it can be added back again later
                     childrenPruned.put(actionToRemove, children.get(actionToRemove));
                     children.remove(actionToRemove);
                 }
             }
 
+            // if we have already pruned and there are some nodes left to be added back, check if we should add them
             if(isPruned && childrenPruned.size() > 0)
             {
+                // formula for re adding a node (A*B^k_nodes)
                 double progressiveUnprune = player.params.pup_A * player.params.pup_B;
                 int kNodes = player.params.pup_k_init;
                 int curPower = 2;
@@ -326,6 +334,7 @@ class SushiGoTreeNode {
                     progressiveUnprune = player.params.pup_A * (Math.pow(player.params.pup_B, curPower));
                     curPower++;
                 }
+                // add back the required nodes
                 while(children.size() < kNodes)
                 {
                     children.put(childrenPruned.entrySet().iterator().next().getKey(),childrenPruned.entrySet().iterator().next().getValue() );
@@ -361,8 +370,11 @@ class SushiGoTreeNode {
 
             if(player.params.useProgressiveBias)
             {
+                // Calculate how good an action is using the sushigoheuristic
                 child.heuristicValue =  player.params.getHeuristic().evaluateState(sgs,player.getPlayerID());
+                // Degrade value after each visit
                 double progressiveBias = child.heuristicValue/ (child.nVisits);
+                // if this a min turn then reverse the score
                 uctValue += iAmMoving ? progressiveBias : -progressiveBias;
             }
 
@@ -404,11 +416,20 @@ class SushiGoTreeNode {
                 AbstractAction next;
                 if(player.params.useRolloutBias)
                 {
+                    // calculate heuristic value for every possible action in this state
                     List<Double> actionValues = evaluateActions(player, rolloutState, availableActions);
+
+                    // get the minimum score
                     double minValue = Collections.min(actionValues) - 0.0000001;
+
+                    // lower all scores by the lowest amount to give a bigger range
                     actionValues.replaceAll(aDouble -> aDouble - minValue);
+
+                    // get sum of all values
                     double actionValueTotal = actionValues.stream().reduce(0.0, Double::sum);
 
+                    // Pick a random number between 0 and total sum and use to pick a value in that range
+                    // This will give higher rewards a higher probability of being selected
                     Random randomNumber = new Random();
                     double pick = randomNumber.nextDouble() * actionValueTotal;
                     double current = 0;
@@ -436,6 +457,10 @@ class SushiGoTreeNode {
         return player.params.getHeuristic().evaluateState(rolloutState, player.getPlayerID());
     }
 
+    /**
+        Evaluate each available action in the state by using the forward model with each action
+        Then using the sushigo heuristic to estimate the quality of the action
+     **/
     private List<Double> evaluateActions(SushiGoMCTSPlayer player, AbstractGameState rolloutState, List<AbstractAction> availableActions) {
         List<Double> values = new ArrayList<Double>();
         for(AbstractAction action : availableActions)

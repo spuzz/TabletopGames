@@ -16,9 +16,9 @@ import static players.mcts.MCTSEnums.Strategies.RANDOM;
 import static players.mcts.MCTSEnums.TreePolicy.UCB;
 
 /**
- * This is a simple version of MCTS that may be useful for newcomers to TAG and MCTS-like algorithms
- * It strips out some of the additional configuration of MCTSPlayer. It uses SushiGoTreeNode in place of
- * SingleTreeNode.
+ * This is an extended version of the BasicMCTSPlayer in the TAG framework
+ * It adds some improvements the MCTS algorithm and some specific adaptations for SushiGo. It uses SushiGoTreeNode in place of
+ * BasicTreeNode.
  */
 public class SushiGoMCTSPlayer extends AbstractPlayer {
 
@@ -67,7 +67,6 @@ public class SushiGoMCTSPlayer extends AbstractPlayer {
         // mctsSearch does all of the hard work
         root.mctsSearch(statsLogger);
 
-        //System.out.println("Max Depth Reached " + statsLogger.);
 
         // Return best action
         return root.bestAction();
