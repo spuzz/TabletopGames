@@ -1,7 +1,8 @@
 Copy groupL folder into the src\main\java folder of the TAG framework
 
 Add the following line at the top of any class creating the agent:
-import groupL.*
+import groupL.*;
+import players.PlayerConstants;
 
 Insert the following lines of code to construct the agent
 
@@ -15,7 +16,7 @@ sushiParams.pup_A = 50;
 sushiParams.maxTreeDepth = 20;
 sushiParams.rolloutLength = 21;
 sushiParams.budgetType = PlayerConstants.BUDGET_TIME;
-sushiParams.budget = 1000;
+sushiParams.budget = 980;
 sushiParams.heuristic = new SushiGoHeuristic();
 
 SushiGoMCTSPlayer sushiGoMCTSPlayer = new SushiGoMCTSPlayer(sushiParams);
